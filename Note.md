@@ -4,7 +4,7 @@ XPNSivity is a personal expense tracking app built with React and Vite. It lets 
 
 ## What API I Used
 
-I used the Frankfurter API (api.frankfurter.dev) for live currency exchange rates. The base currency is USD, when the user switches currency, the app fetches the latest rate and applies it across the total and all category breakdowns simultaneously. Loading and error states are handled gracefully so the UI never breaks if the API call fails.
+I used the Frankfurter API (api.frankfurter.dev) for live currency exchange rates. The base currency is user selected default currency, when the user switches currency, the app fetches the latest rate and applies it across the total and all category breakdowns simultaneously. Loading and error states are handled gracefully so the UI never breaks if the API call fails.
 
 ## Challenges I Faced
 
