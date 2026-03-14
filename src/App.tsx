@@ -6,6 +6,8 @@ import { ExpenseList } from './components/ExpenseList'
 import { TotalCard } from './components/TotalCard'
 import type { Category, Currency, Expense } from './types'
 
+type CurrencyRates = Partial<Record<Currency, number>>
+
 const categories: Category[] = [
   'Food',
   'Transport',
@@ -16,6 +18,25 @@ const categories: Category[] = [
 
 const currencies: Currency[] = ['USD', 'INR', 'EUR', 'GBP', 'JPY']
 
+const convertExpenseToBaseCurrency = (
+  amount: number,
+  expenseCurrency: Currency,
+  baseCurrency: Currency,
+  rates: CurrencyRates,
+) => {
+  if (expenseCurrency === baseCurrency) {
+    return amount
+  }
+
+  const rateFromBase = rates[expenseCurrency]
+
+  if (!rateFromBase || rateFromBase <= 0) {
+    return amount
+  }
+
+  return amount / rateFromBase
+}
+
 function App() {
   const [baseCurrency, setBaseCurrency] = useState<Currency>('USD')
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -23,11 +44,9 @@ function App() {
   const [isSubmittingExpense, setIsSubmittingExpense] = useState(false)
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [exchangeRate, setExchangeRate] = useState<number>(1)
+  const [currencyRates, setCurrencyRates] = useState<CurrencyRates>({ USD: 1 })
   const [rateLoading, setRateLoading] = useState(false)
   const [rateError, setRateError] = useState(false)
-
-
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -38,23 +57,39 @@ function App() {
   }, [])
 
   useEffect(() => {
-  if (baseCurrency === 'USD') {
-    setExchangeRate(1)
-    return
-  }
-  setRateLoading(true)
-  setRateError(false)
-  fetch(`https://api.frankfurter.dev/v1/latest?base=USD&symbols=${baseCurrency}`)
-    .then(r => r.json())
-    .then(data => {
-      setExchangeRate(data.rates[baseCurrency])
-      setRateLoading(false)
-    })
-    .catch(() => {
-      setRateError(true)
-      setRateLoading(false)
-    })
-}, [baseCurrency])
+    let isCancelled = false
+
+    setRateLoading(true)
+    setRateError(false)
+
+    const symbols = currencies.filter((currency) => currency !== baseCurrency).join(',')
+
+    fetch(`https://api.frankfurter.dev/v1/latest?base=${baseCurrency}&symbols=${symbols}`)
+      .then(r => r.json())
+      .then(data => {
+        if (isCancelled) {
+          return
+        }
+
+        setCurrencyRates({
+          ...data.rates,
+          [baseCurrency]: 1,
+        })
+        setRateLoading(false)
+      })
+      .catch(() => {
+        if (isCancelled) {
+          return
+        }
+
+        setRateError(true)
+        setRateLoading(false)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [baseCurrency])
 
   const addExpense = async (expenseInput: Omit<Expense, 'id' | 'createdAt'>) => {
     setErrorMessage(null)
@@ -101,18 +136,41 @@ function App() {
   )
 
   const convertedTotal = useMemo(
-    () => expenses.reduce((sum, e) => sum + e.amount, 0) * exchangeRate,
-    [expenses, exchangeRate]
+    () =>
+      expenses.reduce(
+        (sum, expense) =>
+          sum +
+          convertExpenseToBaseCurrency(
+            expense.amount,
+            expense.currency,
+            baseCurrency,
+            currencyRates,
+          ),
+        0,
+      ),
+    [baseCurrency, currencyRates, expenses],
   )
 
-const breakdownByCategory = useMemo(() => {
-  return categories.map((category) => ({
-    category,
-    total: expenses
-      .filter(e => e.category === category)
-      .reduce((sum, e) => sum + e.amount, 0) * exchangeRate
-  }))
-}, [expenses, exchangeRate])
+  const breakdownByCategory = useMemo(
+    () =>
+      categories.map((category) => ({
+        category,
+        total: expenses
+          .filter((expense) => expense.category === category)
+          .reduce(
+            (sum, expense) =>
+              sum +
+              convertExpenseToBaseCurrency(
+                expense.amount,
+                expense.currency,
+                baseCurrency,
+                currencyRates,
+              ),
+            0,
+          ),
+      })),
+    [baseCurrency, currencyRates, expenses],
+  )
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50 to-orange-50 px-4 py-8 text-slate-900 md:px-8">
@@ -155,6 +213,7 @@ const breakdownByCategory = useMemo(() => {
             <ExpenseForm
               categories={categories}
               currencies={currencies}
+              defaultCurrency={baseCurrency}
               onSubmit={addExpense}
               isSubmitting={isSubmittingExpense}
             />

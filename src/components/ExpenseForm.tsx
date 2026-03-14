@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import type { Category, Currency, Expense } from '../types'
 
 interface ExpenseFormProps {
   categories: Category[]
   currencies: Currency[]
+  defaultCurrency: Currency
   onSubmit: (expense: Omit<Expense, 'id' | 'createdAt'>) => Promise<void> | void
   isSubmitting: boolean
 }
@@ -13,14 +14,19 @@ const getTodayDate = () => new Date().toISOString().split('T')[0]
 export function ExpenseForm({
   categories,
   currencies,
+  defaultCurrency,
   onSubmit,
   isSubmitting,
 }: ExpenseFormProps) {
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState<Category>(categories[0])
-  const [currency, setCurrency] = useState<Currency>(currencies[0])
+  const [currency, setCurrency] = useState<Currency>(defaultCurrency)
   const [date, setDate] = useState(getTodayDate())
+
+  useEffect(() => {
+    setCurrency(defaultCurrency)
+  }, [defaultCurrency])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -41,7 +47,7 @@ export function ExpenseForm({
     setName('')
     setAmount('')
     setCategory(categories[0])
-    setCurrency(currencies[0])
+    setCurrency(defaultCurrency)
     setDate(getTodayDate())
   }
 
