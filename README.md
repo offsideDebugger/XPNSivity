@@ -1,4 +1,4 @@
-# Expense Tracker
+# XPNSivity
 
 A clean and responsive expense tracker built with React, Vite, TypeScript, and Tailwind CSS.
 
@@ -60,6 +60,9 @@ bun run dev
 - `bun run build` - Type-check and build for production
 - `bun run preview` - Preview the production build locally
 - `bun run lint` - Run ESLint
+
+## Live Link 
+- https://xpnsivity.vercel.app
 
 ## Notes
 
